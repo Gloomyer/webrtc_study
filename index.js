@@ -9,6 +9,10 @@ express.get('/01', (req, resp) => {
     resp.sendFile(__dirname + '/01.通过摄像头捕捉视频并且展示.html')
 })
 
+express.get('/02', (req, resp) => {
+    resp.sendFile(__dirname + '/02.获取当前设备信息.html')
+})
+
 express.get('/err', (req, resp) => {
     console.log(req.query)
     resp.send(req.query)
