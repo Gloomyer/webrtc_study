@@ -2,7 +2,12 @@
 
 学习webrtc的相关代码
 
-依赖node/vue/axios
+依赖
+- node
+- vue
+- axios
+- express
+- socket-io
 
 运行命令
 

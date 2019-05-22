@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>P2P音视频通话</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div style="color: #a00;font-size: 1em">日志信息:</div>
+            <div style="color: #f00;font-size: 1em;white-space: pre-wrap;">{{msg}}</div>
+        </div>
+        <div>
+            房间名: <input v-bind:disabled="dis" type="text" v-model="roomName"> <button v-bind:disabled="dis"
+                @click='join'>加入</button>
+        </div>
+        <div>
+            <div style="width:49%;border: 1px solid red;float: left;"><video id="localView" autoplay></video></div>
+            <div style="width:49%;border: 1px solid red;float: left;"><video id="remoteView" autoplay></video></div>
+        </div>
+    </div>
+    <script>
+        var iceServers = {
+            'iceServers': [
+                { 'url': 'stun:stun.services.mozilla.com' },
+                { 'url': 'stun:stun.l.google.com:19302' }
+            ]
+        }
+        var streamConstraints = { audio: true, video: true }
+        var isCaller = false
+        var socket = io()
+        var isFirst = true
+        var roomNumber = 0
+
+        function log(msg) {
+            root.msg += (isFirst ? '' : '\n') + msg;
+            isFirst = false
+        }
+        var root = new Vue({
+            el: '#root',
+            data: {
+                msg: '',
+                roomName: '',
+                dis: false
+            },
+            methods: {
+                join: function () {
+                    console.log(this.roomName)
+                    if (this.roomName === '') {
+                        log('请输入房间名称')
+                    } else {
+                        log('尝试加入房间:' + this.roomName.trim())
+                        socket.emit('create_or_join', this.roomName.trim())
+                        this.dis = 'disabled'
+                    }
+                }
+            }
+        })
+
+        var localStream
+        var localView = document.getElementById('localView')
+
+        var remoteStream
+        var remoteView = document.getElementById('remoteView')
+
+        var rtcPeerConnecton
+
+        socket.on('created', room => {
+            navigator.mediaDevices.getUserMedia(streamConstraints)
+                .then(stream => {
+                    log('捕捉音视频成功')
+                    localStream = stream
+                    localView.srcObject = stream
+                    isCaller = true
+                })
+                .catch(err => {
+                    log('捕捉音视频失败' + err.name)
+                })
+        })
+
+
+        socket.on('joined', room => {
+            navigator.mediaDevices.getUserMedia(streamConstraints)
+                .then(stream => {
+                    log('捕捉音视频成功')
+                    localStream = stream
+                    localView.srcObject = stream
+                    socket.emit('ready', roomNumber)
+                })
+                .catch(err => {
+                    log('捕捉音视频失败' + err.name)
+                })
+        })
+
+        socket.on('ready', function () {
+            if (isCaller) {
+                rtcPeerConnecton = new RTCPeerConnection(iceServers)
+                rtcPeerConnecton.onicecandidate = onIceCandidate;
+                rtcPeerConnecton.onaddstream = onAddStream;
+                rtcPeerConnecton.addStream(localStream)
+                rtcPeerConnecton.createOffer(setLocalOffer, function (e) {
+                    log('createOffer Error:' + e.name)
+                })
+            }
+        })
+
+        socket.on('offer', function (event) {
+            if (!isCaller) {
+                rtcPeerConnecton = new RTCPeerConnection(iceServers)
+                rtcPeerConnecton.onicecandidate = onIceCandidate;
+                rtcPeerConnecton.onaddstream = onAddStream;
+                rtcPeerConnecton.addStream(localStream)
+                rtcPeerConnecton.setRemoteDescription(new RTCSessionDescription(event))
+                rtcPeerConnecton.createAnswer(setLocalAndAnswer, function (e) {
+                    log('createAnswer Error:' + e.name)
+                })
+            }
+        })
+
+        socket.on('onswer', function (event) {
+            rtcPeerConnecton.setRemoteDescription(new RTCSessionDescription(event))
+        })
+
+        socket.on('candidate', function (event) {
+            var candidate = new RTCIceCandidate({
+                sdpMLineIndex: event.label,
+                candidate: event.candidate
+            })
+
+            rtcPeerConnecton.addIceCandidate(candidate)
+        })
+
+
+        function onAddStream(event) {
+            remoteView.srcObject = event.stream
+            remoteStream = event.stream
+        }
+
+        function onIceCandidate(event) {
+            if (event.candidate) {
+                log('onIceCandidate')
+                socket.emit('candidate', {
+                    type: 'candidate',
+                    label: event.candidate.sdpMLineIndex,
+                    id: event.candidate.candidate,
+                    room: roomNumber
+                })
+            }
+        }
+
+        log('初始化完成')
+    </script>
+</body>
+
+</html>
