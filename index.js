@@ -5,12 +5,8 @@ http.listen(8080, () => {
     console.log('http://127.0.0.1:8080');
 })
 
-express.get('/', (req, resp) => {
+express.get('/01', (req, resp) => {
     resp.sendFile(__dirname + '/01.通过摄像头捕捉视频并且展示.html')
-})
-
-express.get('/demo', (req, resp) => {
-    resp.sendFile(__dirname + '/demo.html')
 })
 
 express.get('/err', (req, resp) => {
