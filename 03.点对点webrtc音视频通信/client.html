@@ -34,7 +34,7 @@
         }
         var streamConstraints = { audio: true, video: true }
         var isCaller = false
-        var socket = io()
+        var socket = io('')
         var isFirst = true
         var roomNumber = 0
 
@@ -56,7 +56,7 @@
                         log('请输入房间名称')
                     } else {
                         log('尝试加入房间:' + this.roomName.trim())
-                        socket.emit('create_or_join', this.roomName.trim())
+                        socket.emit('create or join', this.roomName.trim())
                         this.dis = 'disabled'
                     }
                 }
@@ -154,6 +154,15 @@
             }
         }
 
+        function setLocalAndAnswer(sessionDescription) {
+            rtcPeerConnecton.setLocalDescription(sessionDescription)
+            socket.emit('answer', {
+                type: 'answer',
+                sdp: sessionDescription,
+                room: roomNumber
+            })
+
+        }
         log('初始化完成')
     </script>
 </body>

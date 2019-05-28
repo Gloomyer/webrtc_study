@@ -24,5 +24,42 @@ express.get('/err', (req, resp) => {
 })
 
 socketio.on('connection', socket => {
-    
+    console.log('a user connected.')
+
+    socket.on('create or join', room => {
+        console.log('create or join to room', room)
+        var myRoom = socketio.sockets.adapter.rooms[room]
+        if (myRoom && myRoom.length > 1) {
+            console.log(myRoom.length, room, 'is full.')
+            return
+        }
+       
+        if (myRoom) {
+            //joined
+            console.log(socket.id, 'joined')
+            socket.join(room)
+            socket.emit('joined', room)
+        } else {
+            //create
+            console.log(socket.id, 'created')
+            socket.join(room)
+            socket.emit('created', room)
+        }
+    })
+
+    socket.on('ready', room => {
+        socket.broadcast.to(room).emit('ready')
+    })
+
+    socket.on('candidate', event => {
+        socket.broadcast.to(event.room).emit('candidate', event)
+    })
+
+    socket.on('offer', event => {
+        socket.broadcast.to(event.room).emit('offer', event)
+    })
+
+    socket.on('answer', event => {
+        socket.broadcast.to(event.room).emit('offer', event)
+    })
 })
